@@ -5,6 +5,8 @@ This repository contains two core components for managing and maintaining a `�
 1️⃣ A **Bash-based 🖥️ health check service** that monitors the server’s health 🩺, attempts to restart 🔄 it if unresponsive, and sends email 📤 notifications upon repeated failures.
 2️⃣ A **Go-based 🚀 server** that handles contact form 📋 submissions, saves messages 💾 to a database 🗄️, and sends emails 📧 using a local Postfix setup 📬.
 
+**This system powers the email distribution functionality for [my resume website](https://me.longsizhuo.com)**. Special thanks to **Postfix** for enabling reliable email delivery. 🙏
+
 These tools work together to ensure high availability ✅ and seamless operation ⚙️ of your mail server.
 
 ## 📂 Repository
