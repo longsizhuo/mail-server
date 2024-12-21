@@ -2,8 +2,8 @@
 
 # 配置部分
 URL="http://localhost:8181/health"   # 要检查的健康检查 URL
-CHECK_INTERVAL=10                    # 检查间隔（秒）
-FAIL_THRESHOLD=10                   # 允许的最大连续失败次数
+CHECK_INTERVAL=600                    # 检查间隔（秒）
+FAIL_THRESHOLD=5                   # 允许的最大连续失败次数
 FAILED_COUNT=0                      # 初始化失败计数
 EMAIL_TO="longsizhuo@gmail.com"      # 收件人邮箱
 EMAIL_SUBJECT="服务健康检查告警"
