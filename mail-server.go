@@ -1,95 +1,97 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"gopkg.in/gomail.v2"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
+	"os/exec"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type ContactMessage struct {
-	ID      uint   `gorm:"primary_key" json:"-"`
-	Name    string `json:"name"`
-	Email   string `json:"email"`
-	Message string `json:"message"`
+	ID      uint   `gorm:"primary_key" json:"-"` // 自增主键
+	Name    string `json:"name"`                 // 用户名
+	Email   string `json:"email"`                // 邮箱
+	Message string `json:"message"`              // 消息
 }
 
 var db *gorm.DB
 
-// 初始化数据库连接
+// 初始化数据库
 func initDB() {
-	// dsn := "root
+	// 设置日志
 	newLogger := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
 		logger.Config{
-			SlowThreshold: time.Second,  // Slow SQL threshold
-			LogLevel:      logger.Error, // Log level
+			SlowThreshold: time.Second,
+			LogLevel:      logger.Info,
 			Colorful:      true,
 		},
 	)
 
-	dsn := "COMP9900:root@tcp(longsizhuo.com:3306)/resume_website?charset=utf8mb4&parseTime=True&loc=Local"
-
-	fmt.Println(dsn)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+	// 数据库连接
+	dsn := "COMP9900:root@tcp(longsizhuo.com:3306)/resume_website?charset=utf8mb4&parseTime=True&loc=Local" // 使用环境变量管理连接字符串
+	var err error
+	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: newLogger,
 	})
 	if err != nil {
-		panic("failed to connect database")
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	err = db.AutoMigrate(&ContactMessage{})
-	if err != nil {
-		panic("failed to migrate database")
+
+	// 自动迁移数据库
+	if err = db.AutoMigrate(&ContactMessage{}); err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
 	}
 }
 
-// sendEmail S end email
-func sendEmail(messaged ContactMessage) error {
-	m := gomail.NewMessage()
-	name := messaged.Name
-	email := messaged.Email
-	content := messaged.Message
+// 使用本地 Postfix 发送邮件
+func sendEmailLocal(contact ContactMessage) error {
+	// 构造邮件内容
+	message := fmt.Sprintf(
+		"From: Contact Form <noreply@localhost>\n"+
+			"To: Admin <longsizhuo@gmail.com>\n"+
+			"Subject: Contact Form Submission: %s (%s)\n\n"+
+			"Name: %s\nEmail: %s\nMessage: %s\n",
+		contact.Name, contact.Email, contact.Name, contact.Email, contact.Message,
+	)
 
-	// SMTP Server settings
-	smtpHost := os.Getenv("SMTP_HOST")
-	smtpPort := os.Getenv("SMTP_PORT")
-	smtpUsername := os.Getenv("SMTP_USERNAME")
-	smtpPassword := os.Getenv("SMTP_PASSWORD")
+	cmd := exec.Command("mail", "-s", fmt.Sprintf("Contact Form Submission: %s (%s)", contact.Name, contact.Email), "longsizhuo@gmail.com")
 
-	// Set up authentication information.
-	from := smtpUsername
-	to := os.Getenv("SMTP_USERNAME")
-	subject := name + email + "sent you an Email"
-	body := content
+	pipe, err := cmd.StdinPipe()
+	// 启动 mail 命令
+	if err := cmd.Start(); err != nil {
+		log.Printf("Failed to start mail command: %v", err)
+		return err
+	}
 
-	m.SetHeader("From", from)
-	m.SetHeader("To", to)
-	m.SetHeader("Subject", fmt.Sprintf("Contact Form: %s", subject))
-	m.SetBody("text/plain", fmt.Sprintf("Name: %s\nEmail: %s\n\n%s", name, email, body))
-
-	port, err := strconv.Atoi(smtpPort)
+	// 写入邮件内容
+	_, err = pipe.Write([]byte(message))
 	if err != nil {
-		return fmt.Errorf("invalid SMTP port: %v", err)
+		log.Printf("Failed to write to mail command: %v", err)
+		return err
 	}
 
-	d := gomail.NewDialer(smtpHost, port, smtpUsername, smtpPassword)
-	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-
-	if err := d.DialAndSend(m); err != nil {
-		return fmt.Errorf("failed to send email: %v", err)
+	// 关闭管道并等待命令执行完成
+	err = pipe.Close()
+	if err != nil {
+		return err
 	}
+	if err := cmd.Wait(); err != nil {
+		log.Printf("Mail command execution failed: %v", err)
+		return err
+	}
+
 	return nil
 }
 
-// 处理联系表单的提交
+// 处理联系表单
 func handleContactForm(c *gin.Context) {
 	var contact ContactMessage
 	if err := c.ShouldBindJSON(&contact); err != nil {
@@ -97,12 +99,14 @@ func handleContactForm(c *gin.Context) {
 		return
 	}
 
+	// 保存到数据库
 	if err := db.Create(&contact).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save message"})
 		return
 	}
 
-	if err := sendEmail(contact); err != nil {
+	// 发送邮件
+	if err := sendEmailLocal(contact); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
 		return
 	}
@@ -115,30 +119,27 @@ func main() {
 
 	router := gin.Default()
 
-	// 允许跨域请求
+	// 配置跨域
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
-
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
 		}
-
 		c.Next()
 	})
 
+	// 设置路由
 	router.POST("/contact", handleContactForm)
 
-	// 健康检查端点
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
 	fmt.Println("Server running on port 8181...")
-	if err := router.Run(":8181"); err != nil {
+	if err := router.Run("0.0.0.0:8181"); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
