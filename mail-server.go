@@ -53,7 +53,6 @@ func initDB() {
 
 // 使用本地 Postfix 发送邮件
 func sendEmailLocal(contact ContactMessage) error {
-	// 构造邮件内容
 	message := fmt.Sprintf(
 		"From: Contact Form <noreply@localhost>\n"+
 			"To: Admin <longsizhuo@gmail.com>\n"+
@@ -65,11 +64,17 @@ func sendEmailLocal(contact ContactMessage) error {
 	cmd := exec.Command("mail", "-s", fmt.Sprintf("Contact Form Submission: %s (%s)", contact.Name, contact.Email), "longsizhuo@gmail.com")
 
 	pipe, err := cmd.StdinPipe()
-	// 启动 mail 命令
+	if err != nil {
+		log.Printf("Failed to get mail command stdin pipe: %v", err)
+		return err
+	}
+
+	// 启动命令
 	if err := cmd.Start(); err != nil {
 		log.Printf("Failed to start mail command: %v", err)
 		return err
 	}
+	log.Println("Mail command started successfully")
 
 	// 写入邮件内容
 	_, err = pipe.Write([]byte(message))
@@ -78,11 +83,13 @@ func sendEmailLocal(contact ContactMessage) error {
 		return err
 	}
 
-	// 关闭管道并等待命令执行完成
-	err = pipe.Close()
-	if err != nil {
+	// 关闭管道
+	if err := pipe.Close(); err != nil {
+		log.Printf("Failed to close pipe: %v", err)
 		return err
 	}
+
+	// 等待命令完成
 	if err := cmd.Wait(); err != nil {
 		log.Printf("Mail command execution failed: %v", err)
 		return err
