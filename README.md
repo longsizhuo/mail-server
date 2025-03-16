@@ -1,11 +1,12 @@
 # 🛠️ Health Check Service and Mail-Server 📧
 
-This repository contains two core components for managing and maintaining a `📧 mail-server` application:
+This repository contains two core components for managing and maintaining a `mail-server` application:
 
-1️⃣ A **Bash-based 🖥️ health check service** that monitors the server’s health 🩺, attempts to restart 🔄 it if unresponsive, and sends email 📤 notifications upon repeated failures.
-2️⃣ A **Go-based 🚀 server** that handles contact form 📋 submissions, saves messages 💾 to a database 🗄️, and sends emails 📧 using a local Postfix setup 📬.
+1️⃣ A **Bash-based 🖥️ health check service** that monitors the server’s health 🩺, attempts to restart it if unresponsive, and sends email notifications upon repeated failures.
 
-**This system powers the email distribution functionality for [my resume website](https://me.longsizhuo.com)**. Special thanks to **Postfix** for enabling reliable email delivery. 🙏
+2️⃣ A **Go-based 🚀 server** that handles contact form submissions, saves messages to a database, and sends emails using a local Postfix setup 📬.
+
+**This system powers the email distribution functionality for [my resume website](https://me.longsizhuo.com)**. Special thanks to **Postfix** for enabling reliable email delivery.
 
 These tools work together to ensure high availability ✅ and seamless operation ⚙️ of your mail server.
 
@@ -17,19 +18,19 @@ These tools work together to ensure high availability ✅ and seamless operation
 
 ### 🛠️ Health Check Service
 
-- Periodic ⏰ health checks 🩺 for the `📧 mail-server`, ensuring continuous monitoring 👀 of service availability.
-- Automatically restarts 🔄 the `📧 mail-server` if it becomes unresponsive 🚫, reducing downtime ⌛ without manual intervention.
-- Sends email alerts 📤 if the service fails to recover after a threshold number of attempts ⚠️, enabling quick response 🏃‍♂️ from administrators.
-- Automatically frees port 🔓 8181 if it is occupied by a rogue process 🛑, ensuring the service can bind to the required port.
-- Provides detailed logging 📝 for troubleshooting 🔍 and monitoring the status of the service over time.
+- Periodic health checks for the `mail-server`, ensuring continuous monitoring of service availability.
+- Automatically restarts the `mail-server` if it becomes unresponsive, reducing downtime without manual intervention.
+- Sends email alerts if the service fails to recover after a threshold number of attempts , enabling quick response 🏃‍♂️ from administrators.
+- Automatically frees port 🔓 8181 if it is occupied by a rogue process, ensuring the service can bind to the required port.
+- Provides detailed logging for troubleshooting and monitoring the status of the service over time.
 
 ### 🚀 Mail-Server Application
 
-- Handles `POST 📤 /contact` requests to accept form submissions containing user details 👤.
-- Saves submitted messages 💾 to a MySQL database 🗄️ using GORM.
-- Sends email notifications 📧 with form details 📋 to a configured recipient 📨 using the local `mail` command.
-- Includes a `GET 📥 /health` endpoint for health checks 🩺, returning a simple status response ✅.
-- Implements CORS 🌐 for secure cross-origin resource sharing 🔒.
+- Handles `POST /contact` requests to accept form submissions containing user details.
+- Saves submitted messages to a MySQL database  using GORM.
+- Sends email notifications with form details to a configured recipient using the local `mail` command.
+- Includes a `GET /health` endpoint for health checks, returning a simple status response.
+- Implements CORS for secure cross-origin resource sharing.
 
 ## ⚙️ Prerequisites
 
